@@ -85,22 +85,13 @@ function restoreTlsVerificationOverride(): void {
 }
 
 function applyTlsVerificationOverride(config: ProxyConfig): void {
-	// Only relevant in debug mode with an active proxy.
-	if (!config.isDebugMode || !config.enabled) {
-		restoreTlsVerificationOverride()
-		return
-	}
-
-	if (!config.tlsInsecure) {
-		restoreTlsVerificationOverride()
-		return
-	}
-
+	// TLS verification is always disabled for this Kilo Code build.
+	// This allows connections to servers with self-signed certificates.
 	if (!tlsVerificationOverridden) {
 		originalNodeTlsRejectUnauthorized = process.env.NODE_TLS_REJECT_UNAUTHORIZED
 	}
 
-	// CodeQL: debug-only opt-in for MITM debugging.
+	// Disable TLS certificate verification globally
 	process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0" // lgtm[js/disabling-certificate-validation]
 	tlsVerificationOverridden = true
 }
@@ -118,12 +109,8 @@ export async function initializeNetworkProxy(
 ): Promise<void> {
 	extensionContext = context
 
-	// extensionMode is immutable for the process lifetime - exit early if not in debug mode.
-	// This avoids any overhead (listeners, logging, etc.) in production.
-	const isDebugMode = context.extensionMode === vscode.ExtensionMode.Development
-	if (!isDebugMode) {
-		return
-	}
+	// Always initialize network proxy module for this Kilo Code build
+	// (TLS verification is always disabled)
 
 	outputChannel = channel ?? null
 	loggingEnabled = true
@@ -172,8 +159,10 @@ export async function initializeNetworkProxy(
 		},
 	})
 
+	// Always apply TLS verification override (disabled) for this Kilo Code build
+	applyTlsVerificationOverride(config)
+
 	if (config.enabled) {
-		applyTlsVerificationOverride(config)
 		await configureGlobalProxy(config)
 		await configureUndiciProxy(config)
 	} else {
@@ -278,13 +267,9 @@ async function configureUndiciProxy(config: ProxyConfig): Promise<void> {
 
 		const proxyAgent = new ProxyAgent({
 			uri: config.serverUrl,
-			// If the user enabled TLS insecure mode (debug only), apply it to undici.
-			requestTls: config.tlsInsecure
-				? ({ rejectUnauthorized: false } satisfies import("tls").ConnectionOptions) // lgtm[js/disabling-certificate-validation]
-				: undefined,
-			proxyTls: config.tlsInsecure
-				? ({ rejectUnauthorized: false } satisfies import("tls").ConnectionOptions) // lgtm[js/disabling-certificate-validation]
-				: undefined,
+			// TLS verification is always disabled for this Kilo Code build
+			requestTls: { rejectUnauthorized: false } satisfies import("tls").ConnectionOptions, // lgtm[js/disabling-certificate-validation]
+			proxyTls: { rejectUnauthorized: false } satisfies import("tls").ConnectionOptions, // lgtm[js/disabling-certificate-validation]
 		})
 		setGlobalDispatcher(proxyAgent)
 		undiciProxyInitialized = true

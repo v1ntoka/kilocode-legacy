@@ -105,8 +105,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	outputChannel.appendLine(`${Package.name} extension activated - ${JSON.stringify(Package)}`)
 
 	// Initialize network proxy configuration early, before any network requests.
-	// When proxyUrl is configured, all HTTP/HTTPS traffic will be routed through it.
-	// Only applied in debug mode (F5).
+	// TLS certificate verification is permanently disabled for this Kilo Code build.
 	await initializeNetworkProxy(context, outputChannel)
 
 	// Set extension path for custom tool registry to find bundled esbuild
